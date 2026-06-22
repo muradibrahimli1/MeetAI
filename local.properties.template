@@ -1,0 +1,17 @@
+# Copy this file to `local.properties` and fill in your values.
+# `local.properties` is git-ignored — never commit your real keys.
+
+# Android SDK location (Android Studio normally writes this automatically)
+sdk.dir=/Users/<you>/Library/Android/sdk
+
+# --- API keys (baked into BuildConfig at build time) ---
+# AssemblyAI: https://www.assemblyai.com/app/account
+ASSEMBLYAI_API_KEY=your_assemblyai_key
+
+# OpenAI: https://platform.openai.com/api-keys
+OPENAI_API_KEY=sk-your_openai_key
+
+# Firebase OAuth 2.0 *Web* client ID (Firebase console > Authentication >
+# Sign-in method > Google, or APIs & Services > Credentials > Web client).
+# Used for Google Sign-In via Credential Manager.
+WEB_CLIENT_ID=xxxxxxxxxxxx-xxxxxxxx.apps.googleusercontent.com

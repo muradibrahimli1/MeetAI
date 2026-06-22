@@ -1,0 +1,16 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+build/
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Secrets / Firebase config — never commit these
+app/google-services.json
+
+# Kotlin compiler stray logs
+.kotlin/
