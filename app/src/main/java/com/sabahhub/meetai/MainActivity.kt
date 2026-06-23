@@ -1,6 +1,7 @@
 package com.sabahhub.meetai
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -9,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.remember
+import androidx.core.content.ContextCompat
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -25,13 +27,20 @@ class MainActivity : ComponentActivity() {
         MeetAiViewModel.factory(application as MeetAiApp)
     }
 
+    // True only for a fresh (cold) launch, so we don't re-record on rotation
+    // or when returning from the background.
+    private var autoStartPending = false
+
     private val permissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { /* result handled by re-check */ }
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+            if (grants[Manifest.permission.RECORD_AUDIO] == true) maybeAutoStart()
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        requestPermissions()
+        autoStartPending = savedInstanceState == null
+        ensurePermissionsThenMaybeAutoStart()
 
         setContent {
             MeetAiTheme {
@@ -60,13 +69,35 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun requestPermissions() {
-        val perms = buildList {
-            add(Manifest.permission.RECORD_AUDIO)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                add(Manifest.permission.POST_NOTIFICATIONS)
+    private fun ensurePermissionsThenMaybeAutoStart() {
+        val micGranted = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.RECORD_AUDIO,
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (micGranted) {
+            maybeAutoStart()
+            // Still request notifications so the recording notification can show.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionLauncher.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
             }
-        }.toTypedArray()
-        permissionLauncher.launch(perms)
+        } else {
+            val perms = buildList {
+                add(Manifest.permission.RECORD_AUDIO)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    add(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }.toTypedArray()
+            permissionLauncher.launch(perms)
+        }
+    }
+
+    /** Fires the auto-start at most once per fresh launch. */
+    private fun maybeAutoStart() {
+        if (!autoStartPending) return
+        autoStartPending = false
+        viewModel.maybeAutoStartOnLaunch()
     }
 }

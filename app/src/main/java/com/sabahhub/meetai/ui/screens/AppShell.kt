@@ -62,6 +62,7 @@ fun AppShell(
     val state by viewModel.record.collectAsStateWithLifecycle()
     val recordings by viewModel.recordings.collectAsStateWithLifecycle()
     val session by viewModel.session.collectAsStateWithLifecycle()
+    val autoStart by viewModel.autoStart.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var tab by remember { mutableStateOf(Tab.Recorder) }
 
@@ -95,6 +96,8 @@ fun AppShell(
                 Tab.Settings -> SettingsScreen(
                     session = session,
                     authAvailable = viewModel.authAvailable,
+                    autoStart = autoStart,
+                    onAutoStartChange = viewModel::setAutoStart,
                     onSignIn = viewModel::signIn,
                     onSignUp = viewModel::signUp,
                     onSignOut = viewModel::signOut,

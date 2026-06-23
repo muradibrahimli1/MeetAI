@@ -2,6 +2,7 @@ package com.sabahhub.meetai
 
 import android.app.Application
 import com.sabahhub.meetai.audio.AudioRecorder
+import com.sabahhub.meetai.data.AppPrefs
 import com.sabahhub.meetai.data.AudioStore
 import com.sabahhub.meetai.data.remote.AssemblyAiClient
 import com.sabahhub.meetai.data.remote.OpenAiClient
@@ -38,6 +39,7 @@ class MeetAiApp : Application() {
     val supabaseRepo by lazy { SupabaseRepository(httpClient, json, supabaseAuth) }
     val audioRecorder by lazy { AudioRecorder(this) }
     val audioStore by lazy { AudioStore(this) }
+    val appPrefs by lazy { AppPrefs(this) }
 
     override fun onCreate() {
         super.onCreate()

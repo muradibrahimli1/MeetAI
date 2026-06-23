@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.sabahhub.meetai.MeetAiApp
 import com.sabahhub.meetai.audio.AudioRecorder
 import com.sabahhub.meetai.audio.RecordingService
+import com.sabahhub.meetai.data.AppPrefs
 import com.sabahhub.meetai.data.AudioStore
 import com.sabahhub.meetai.data.model.Recording
 import com.sabahhub.meetai.data.model.RecordingStatus
@@ -56,6 +57,7 @@ class MeetAiViewModel(
     private val auth: SupabaseAuth,
     private val repo: SupabaseRepository,
     private val audioStore: AudioStore,
+    private val appPrefs: AppPrefs,
     private val appContext: Context,
 ) : ViewModel() {
 
@@ -72,6 +74,25 @@ class MeetAiViewModel(
 
     /** Whether Supabase (sign-in + cloud sync) is configured in this build. */
     val authAvailable: Boolean = auth.available
+
+    /** When true, recording starts automatically on a fresh app launch. */
+    private val _autoStart = MutableStateFlow(appPrefs.autoStartOnLaunch)
+    val autoStart: StateFlow<Boolean> = _autoStart.asStateFlow()
+
+    fun setAutoStart(enabled: Boolean) {
+        appPrefs.autoStartOnLaunch = enabled
+        _autoStart.value = enabled
+    }
+
+    /**
+     * Called once per fresh launch (after mic permission is available). Starts
+     * recording if the preference is on and nothing is already in progress.
+     */
+    fun maybeAutoStartOnLaunch() {
+        if (!_autoStart.value) return
+        if (_record.value.isRecording || _record.value.processing != null) return
+        startRecording()
+    }
 
     /**
      * In-memory history for the current session, used when signed out. When
@@ -351,6 +372,7 @@ class MeetAiViewModel(
                         auth = app.supabaseAuth,
                         repo = app.supabaseRepo,
                         audioStore = app.audioStore,
+                        appPrefs = app.appPrefs,
                         appContext = app.applicationContext,
                     ) as T
             }
