@@ -124,6 +124,30 @@ class RecordingController(
         if (s.isPaused) doResume(auto = false) else doPause(auto = false)
     }
 
+    /**
+     * Discards the current take and starts a fresh one. The mic/audio-focus and
+     * foreground service stay active throughout (state never returns to idle),
+     * so there's no flicker — it just resets to 00:00.
+     */
+    fun restartRecording() {
+        if (!_record.value.isRecording) {
+            startRecording()
+            return
+        }
+        recorder.discard()
+        runCatching { recorder.start() }.onFailure {
+            // Couldn't restart — fall back to a clean idle state.
+            abandonAudioFocus()
+            _record.value = RecordUiState(error = "Couldn't restart recording: ${it.message}")
+            return
+        }
+        elapsedAccumMs = 0L
+        lastResumeAt = System.currentTimeMillis()
+        wasAutoPaused = false
+        amplitudeHistory.clear()
+        _record.value = RecordUiState(isRecording = true, isPaused = false)
+    }
+
     private fun doPause(auto: Boolean) {
         val s = _record.value
         if (!s.isRecording || s.isPaused) return

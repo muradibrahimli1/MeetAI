@@ -50,6 +50,7 @@ class MeetAiViewModel(
 
     fun startRecording() = controller.startRecording()
     fun togglePause() = controller.togglePause()
+    fun restartRecording() = controller.restartRecording()
     fun discardRecording() = controller.discardRecording()
     fun saveRecording() = controller.saveRecording()
     fun deleteRecording(id: String) { controller.deleteRecording(id) }

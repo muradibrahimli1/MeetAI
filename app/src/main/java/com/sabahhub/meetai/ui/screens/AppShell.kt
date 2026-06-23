@@ -20,8 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -116,13 +115,12 @@ fun AppShell(
             hazeState = hazeState,
             selected = tab,
             recording = state.isRecording,
-            paused = state.isPaused,
             onSelectLibrary = { tab = Tab.Library },
             onSelectSettings = { tab = Tab.Settings },
             onCenter = {
                 when {
                     tab != Tab.Recorder -> tab = Tab.Recorder
-                    state.isRecording -> viewModel.togglePause()
+                    state.isRecording -> viewModel.restartRecording() // discard & start over
                     else -> viewModel.startRecording()
                 }
             },
@@ -136,7 +134,6 @@ private fun BottomBar(
     hazeState: HazeState,
     selected: Tab,
     recording: Boolean,
-    paused: Boolean,
     onSelectLibrary: () -> Unit,
     onSelectSettings: () -> Unit,
     onCenter: () -> Unit,
@@ -188,12 +185,8 @@ private fun BottomBar(
             )
         }
 
-        // Center mic / pause FAB, elevated above the bar.
-        val centerIcon = when {
-            selected == Tab.Recorder && recording && !paused -> Icons.Default.Pause
-            selected == Tab.Recorder && recording && paused -> Icons.Default.PlayArrow
-            else -> Icons.Default.Mic
-        }
+        // Center FAB: mic to start, or restart (↺) while recording to start over.
+        val centerIcon = if (recording) Icons.Default.Replay else Icons.Default.Mic
         Box(
             Modifier
                 .size(64.dp)
@@ -206,7 +199,7 @@ private fun BottomBar(
         ) {
             Icon(
                 centerIcon,
-                contentDescription = "Record",
+                contentDescription = if (recording) "Restart recording" else "Record",
                 tint = Color(0xFF06143A),
                 modifier = Modifier.size(30.dp),
             )
