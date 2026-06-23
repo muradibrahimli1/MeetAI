@@ -55,6 +55,7 @@ class MeetAiViewModel(
     fun saveRecording() = controller.saveRecording()
     fun deleteRecording(id: String) { controller.deleteRecording(id) }
     fun renameRecording(id: String, title: String) { controller.renameRecording(id, title) }
+    fun renameSpeaker(id: String, oldName: String, newName: String) { controller.renameSpeaker(id, oldName, newName) }
     fun clearError() = controller.clearError()
     suspend fun refresh() = controller.refresh()
 

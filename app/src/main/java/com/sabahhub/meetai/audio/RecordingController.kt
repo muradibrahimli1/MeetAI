@@ -200,6 +200,26 @@ class RecordingController(
         runCatching { repo.updateTitle(id, title) }
     }
 
+    /** Renames a speaker across a recording's utterances and transcript, then syncs. */
+    fun renameSpeaker(recordingId: String, oldName: String, newName: String) = scope.launch {
+        val name = newName.trim()
+        if (name.isEmpty() || name == oldName) return@launch
+
+        fun remap(list: List<Recording>) = list.map { r ->
+            if (r.id != recordingId) return@map r
+            val utterances = r.utterances.map { if (it.speaker == oldName) it.copy(speaker = name) else it }
+            val transcript = if (utterances.isNotEmpty())
+                utterances.joinToString("\n\n") { "${it.speaker}: ${it.text}" } else r.transcript
+            r.copy(utterances = utterances, transcript = transcript)
+        }
+        _local.value = remap(_local.value)
+        _cloud.value = remap(_cloud.value)
+
+        val updated = (_cloud.value + _local.value).firstOrNull { it.id == recordingId } ?: return@launch
+        if (auth.accessToken == null) return@launch
+        runCatching { repo.upsert(updated) }
+    }
+
     fun deleteRecording(id: String) = scope.launch {
         _local.value = _local.value.filterNot { it.id == id }
         _cloud.value = _cloud.value.filterNot { it.id == id }
