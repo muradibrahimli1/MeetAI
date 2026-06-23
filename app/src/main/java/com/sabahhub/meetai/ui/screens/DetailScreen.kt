@@ -35,10 +35,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Intent
 import com.sabahhub.meetai.data.model.Recording
 import com.sabahhub.meetai.ui.MeetAiViewModel
+import com.sabahhub.meetai.ui.components.AudioPlayerBar
 import com.sabahhub.meetai.ui.components.GlassCard
 import com.sabahhub.meetai.ui.components.MarkdownText
 import com.sabahhub.meetai.ui.formatDate
 import com.sabahhub.meetai.ui.formatDuration
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,6 +98,16 @@ fun DetailScreen(
                     rec.language?.let { append(" · ${it.uppercase()}") }
                 }
                 Text(meta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            // Audio player — only when the recording's file is on this device.
+            val audioPath = rec.localAudioPath
+            val audioExists = remember(audioPath) { audioPath != null && File(audioPath).exists() }
+            if (audioPath != null && audioExists) {
+                AudioPlayerBar(
+                    filePath = audioPath,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                )
             }
 
             TabRow(
