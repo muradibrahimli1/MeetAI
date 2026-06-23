@@ -6,12 +6,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -31,15 +34,19 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.sabahhub.meetai.data.ThemeMode
 import com.sabahhub.meetai.data.remote.supabase.SupabaseSession
 import com.sabahhub.meetai.ui.components.GlassCard
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     session: SupabaseSession?,
     authAvailable: Boolean,
     autoStart: Boolean,
     onAutoStartChange: (Boolean) -> Unit,
+    themeMode: ThemeMode,
+    onThemeModeChange: (ThemeMode) -> Unit,
     onSignIn: (email: String, password: String) -> Unit,
     onSignUp: (email: String, password: String) -> Unit,
     onSignOut: () -> Unit,
@@ -98,6 +105,18 @@ fun SettingsScreen(
                             checkedTrackColor = MaterialTheme.colorScheme.secondary,
                         ),
                     )
+                }
+                Spacer(Modifier.height(16.dp))
+                Text("Theme", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
+                Spacer(Modifier.height(8.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ThemeMode.entries.forEach { mode ->
+                        FilterChip(
+                            selected = themeMode == mode,
+                            onClick = { onThemeModeChange(mode) },
+                            label = { Text(mode.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                        )
+                    }
                 }
             }
         }

@@ -10,8 +10,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sabahhub.meetai.data.ThemeMode
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -48,9 +52,15 @@ class MainActivity : ComponentActivity() {
         ensurePermissionsThenMaybeAutoStart()
 
         setContent {
-            MeetAiTheme {
+            val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+            val darkTheme = when (themeMode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+            MeetAiTheme(darkTheme = darkTheme) {
                 val hazeState = remember { HazeState() }
-                AppBackground(hazeState = hazeState) {
+                AppBackground(hazeState = hazeState, darkTheme = darkTheme) {
                     val navController = rememberNavController()
                     NavHost(navController = navController, startDestination = "shell") {
                         composable("shell") {

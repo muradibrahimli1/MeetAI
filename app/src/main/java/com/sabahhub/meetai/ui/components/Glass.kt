@@ -29,6 +29,7 @@ fun Modifier.glass(
     fillAlpha: Float = 0.10f,
     borderAlpha: Float = 0.28f,
     hazeState: HazeState? = null,
+    hazeBackground: Color = Navy,
 ): Modifier {
     val base = this.clip(shape)
     val filled = if (hazeState != null) {
@@ -36,7 +37,7 @@ fun Modifier.glass(
             state = hazeState,
             shape = shape,
             style = HazeStyle(
-                backgroundColor = Navy,
+                backgroundColor = hazeBackground,
                 tint = HazeTint(Color.White.copy(alpha = fillAlpha)),
                 blurRadius = 24.dp,
             ),
@@ -62,7 +63,14 @@ fun GlassCard(
     hazeState: HazeState? = null,
     content: @Composable () -> Unit,
 ) {
-    Box(modifier.glass(RoundedCornerShape(cornerRadius), fillAlpha = fillAlpha, hazeState = hazeState)) {
+    Box(
+        modifier.glass(
+            RoundedCornerShape(cornerRadius),
+            fillAlpha = fillAlpha,
+            hazeState = hazeState,
+            hazeBackground = androidx.compose.material3.MaterialTheme.colorScheme.background,
+        )
+    ) {
         content()
     }
 }

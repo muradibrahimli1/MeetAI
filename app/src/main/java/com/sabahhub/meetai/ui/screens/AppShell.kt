@@ -65,6 +65,7 @@ fun AppShell(
     val recordings by viewModel.recordings.collectAsStateWithLifecycle()
     val session by viewModel.session.collectAsStateWithLifecycle()
     val autoStart by viewModel.autoStart.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var tab by remember { mutableStateOf(Tab.Recorder) }
     var showRestartConfirm by remember { mutableStateOf(false) }
@@ -118,6 +119,8 @@ fun AppShell(
                     authAvailable = viewModel.authAvailable,
                     autoStart = autoStart,
                     onAutoStartChange = viewModel::setAutoStart,
+                    themeMode = themeMode,
+                    onThemeModeChange = viewModel::setThemeMode,
                     onSignIn = viewModel::signIn,
                     onSignUp = viewModel::signUp,
                     onSignOut = viewModel::signOut,
@@ -177,7 +180,7 @@ private fun BottomBar(
                     state = hazeState,
                     shape = barShape,
                     style = HazeStyle(
-                        backgroundColor = Navy,
+                        backgroundColor = MaterialTheme.colorScheme.background,
                         tint = HazeTint(Color.White.copy(alpha = 0.10f)),
                         blurRadius = 24.dp,
                     ),

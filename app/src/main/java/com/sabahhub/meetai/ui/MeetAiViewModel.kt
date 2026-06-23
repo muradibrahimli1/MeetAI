@@ -6,6 +6,7 @@ import com.sabahhub.meetai.MeetAiApp
 import com.sabahhub.meetai.audio.RecordUiState
 import com.sabahhub.meetai.audio.RecordingController
 import com.sabahhub.meetai.data.AppPrefs
+import com.sabahhub.meetai.data.ThemeMode
 import com.sabahhub.meetai.data.model.Recording
 import com.sabahhub.meetai.data.remote.supabase.SupabaseAuth
 import com.sabahhub.meetai.data.remote.supabase.SupabaseSession
@@ -36,6 +37,14 @@ class MeetAiViewModel(
     fun setAutoStart(enabled: Boolean) {
         appPrefs.autoStartOnLaunch = enabled
         _autoStart.value = enabled
+    }
+
+    private val _themeMode = MutableStateFlow(appPrefs.themeMode)
+    val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
+
+    fun setThemeMode(mode: ThemeMode) {
+        appPrefs.themeMode = mode
+        _themeMode.value = mode
     }
 
     /** Called once per fresh launch (after mic permission is available). */
