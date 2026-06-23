@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sabahhub.meetai.data.model.Recording
 import com.sabahhub.meetai.data.model.RecordingStatus
@@ -111,6 +112,7 @@ private fun RecordingCard(rec: Recording, hazeState: HazeState, onOpen: () -> Un
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 val meta = buildString {
                     if (rec.durationMs > 0) append(formatDuration(rec.durationMs)) else append(formatDate(rec.createdAt))
