@@ -51,6 +51,26 @@ class AudioRecorder(private val context: Context) {
         return (r.maxAmplitude.coerceIn(0, 32767)) / 32767f
     }
 
+    /** Pauses recording (MediaRecorder.pause is available from API 24). */
+    fun pause() {
+        recorder?.pause()
+    }
+
+    /** Resumes a paused recording. */
+    fun resume() {
+        recorder?.resume()
+    }
+
+    /** Stops recording and deletes the file (used by Discard). */
+    fun discard() {
+        val r = recorder ?: return
+        runCatching { r.stop() }
+        r.release()
+        recorder = null
+        outputFile?.delete()
+        outputFile = null
+    }
+
     /** Stops recording and returns the finished file, or null if nothing was recorded. */
     fun stop(): File? {
         val r = recorder ?: return null

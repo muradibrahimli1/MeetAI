@@ -11,7 +11,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -21,12 +20,14 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Intent
 import com.sabahhub.meetai.data.model.Recording
 import com.sabahhub.meetai.ui.MeetAiViewModel
+import com.sabahhub.meetai.ui.components.GlassCard
 import com.sabahhub.meetai.ui.components.MarkdownText
 import com.sabahhub.meetai.ui.formatDate
 import com.sabahhub.meetai.ui.formatDuration
@@ -51,8 +53,15 @@ fun DetailScreen(
     var tab by remember { mutableIntStateOf(0) }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                    actionIconContentColor = MaterialTheme.colorScheme.onBackground,
+                ),
                 title = { Text(rec?.title ?: "Recording") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -88,9 +97,17 @@ fun DetailScreen(
                 Text(meta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
-            TabRow(selectedTabIndex = tab) {
-                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Summary") })
-                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Transcript") })
+            TabRow(
+                selectedTabIndex = tab,
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.secondary,
+            ) {
+                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Summary") },
+                    selectedContentColor = MaterialTheme.colorScheme.secondary,
+                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Transcript") },
+                    selectedContentColor = MaterialTheme.colorScheme.secondary,
+                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             Column(
@@ -118,11 +135,16 @@ private fun SummaryTab(rec: Recording) {
 private fun TranscriptTab(rec: Recording) {
     if (rec.utterances.isNotEmpty()) {
         rec.utterances.forEach { u ->
-            Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            GlassCard(Modifier.fillMaxWidth().padding(vertical = 4.dp), cornerRadius = 16.dp) {
                 Column(Modifier.padding(12.dp)) {
-                    Text(u.speaker, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        u.speaker,
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
                     Spacer(Modifier.height(2.dp))
-                    Text(u.text, style = MaterialTheme.typography.bodyMedium)
+                    Text(u.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
                 }
             }
         }

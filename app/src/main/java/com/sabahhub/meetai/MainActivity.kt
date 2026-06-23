@@ -5,18 +5,17 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.sabahhub.meetai.ui.MeetAiViewModel
+import com.sabahhub.meetai.ui.screens.AppShell
 import com.sabahhub.meetai.ui.screens.DetailScreen
-import com.sabahhub.meetai.ui.screens.HomeScreen
+import com.sabahhub.meetai.ui.theme.AppBackground
+import com.sabahhub.meetai.ui.theme.MeetAiTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -29,21 +28,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         requestPermissions()
 
         setContent {
-            val context = LocalContext.current
-            val colorScheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                dynamicLightColorScheme(context)
-            } else {
-                MaterialTheme.colorScheme
-            }
-            MaterialTheme(colorScheme = colorScheme) {
-                Surface {
+            MeetAiTheme {
+                AppBackground {
                     val navController = rememberNavController()
-                    NavHost(navController = navController, startDestination = "home") {
-                        composable("home") {
-                            HomeScreen(
+                    NavHost(navController = navController, startDestination = "shell") {
+                        composable("shell") {
+                            AppShell(
                                 viewModel = viewModel,
                                 onOpenRecording = { id -> navController.navigate("detail/$id") },
                             )

@@ -32,12 +32,17 @@ import java.util.UUID
 
 data class RecordUiState(
     val isRecording: Boolean = false,
+    val isPaused: Boolean = false,
     val elapsedMs: Long = 0,
     val amplitude: Float = 0f,
+    /** Recent normalized amplitudes (oldest first) for the live waveform. */
+    val amplitudes: List<Float> = emptyList(),
     /** The recording currently being transcribed/summarized, if any. */
     val processing: Recording? = null,
     val error: String? = null,
-)
+) {
+    val isActive: Boolean get() = isRecording
+}
 
 class MeetAiViewModel(
     private val recorder: AudioRecorder,
@@ -76,7 +81,10 @@ class MeetAiViewModel(
             .sortedByDescending { it.createdAt }
     }
 
-    private var recordingStartedAt = 0L
+    // Elapsed time is accumulated so it freezes while paused.
+    private var elapsedAccumMs = 0L
+    private var lastResumeAt = 0L
+    private val amplitudeHistory = ArrayDeque<Float>()
 
     // --- auth ---------------------------------------------------------------
 
@@ -89,11 +97,8 @@ class MeetAiViewModel(
 
     // --- recording ----------------------------------------------------------
 
-    fun toggleRecording() {
-        if (_record.value.isRecording) stopAndProcess() else startRecording()
-    }
-
-    private fun startRecording() {
+    fun startRecording() {
+        if (_record.value.isRecording) return
         runCatching {
             recorder.start()
             RecordingService.start(appContext)
@@ -101,25 +106,67 @@ class MeetAiViewModel(
             _record.value = _record.value.copy(error = "Couldn't start recording: ${it.message}")
             return
         }
-        recordingStartedAt = System.currentTimeMillis()
-        _record.value = RecordUiState(isRecording = true)
+        elapsedAccumMs = 0L
+        lastResumeAt = System.currentTimeMillis()
+        amplitudeHistory.clear()
+        _record.value = RecordUiState(isRecording = true, isPaused = false)
         tickWhileRecording()
+    }
+
+    fun togglePause() {
+        val s = _record.value
+        if (!s.isRecording) return
+        if (s.isPaused) {
+            recorder.resume()
+            lastResumeAt = System.currentTimeMillis()
+            _record.value = s.copy(isPaused = false)
+        } else {
+            recorder.pause()
+            elapsedAccumMs += System.currentTimeMillis() - lastResumeAt
+            _record.value = s.copy(isPaused = true)
+        }
+    }
+
+    private fun currentElapsed(): Long {
+        val s = _record.value
+        return if (s.isPaused) elapsedAccumMs
+        else elapsedAccumMs + (System.currentTimeMillis() - lastResumeAt)
     }
 
     private fun tickWhileRecording() = viewModelScope.launch {
         while (isActive && _record.value.isRecording) {
-            _record.value = _record.value.copy(
-                elapsedMs = System.currentTimeMillis() - recordingStartedAt,
-                amplitude = recorder.amplitude(),
-            )
-            delay(100)
+            if (!_record.value.isPaused) {
+                val amp = recorder.amplitude()
+                amplitudeHistory.addLast(amp)
+                while (amplitudeHistory.size > MAX_WAVE_SAMPLES) amplitudeHistory.removeFirst()
+                _record.value = _record.value.copy(
+                    elapsedMs = currentElapsed(),
+                    amplitude = amp,
+                    amplitudes = amplitudeHistory.toList(),
+                )
+            }
+            delay(80)
         }
     }
 
-    private fun stopAndProcess() {
+    /** Discards the in-progress recording without transcribing. */
+    fun discardRecording() {
+        recorder.discard()
+        RecordingService.stop(appContext)
+        _record.value = _record.value.copy(
+            isRecording = false, isPaused = false, amplitude = 0f, amplitudes = emptyList(), elapsedMs = 0,
+        )
+    }
+
+    /** Stops the recording and runs the transcription + summary pipeline. */
+    fun saveRecording() {
+        if (!_record.value.isRecording) return
+        if (_record.value.isPaused) recorder.resume() // stop() requires an active recorder
         val file = recorder.stop()
         RecordingService.stop(appContext)
-        _record.value = _record.value.copy(isRecording = false, amplitude = 0f)
+        _record.value = _record.value.copy(
+            isRecording = false, isPaused = false, amplitude = 0f, amplitudes = emptyList(), elapsedMs = 0,
+        )
 
         if (file == null) {
             _record.value = _record.value.copy(error = "Recording was too short.")
@@ -193,6 +240,8 @@ class MeetAiViewModel(
     // --- factory ------------------------------------------------------------
 
     companion object {
+        private const val MAX_WAVE_SAMPLES = 80
+
         fun factory(app: MeetAiApp): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
