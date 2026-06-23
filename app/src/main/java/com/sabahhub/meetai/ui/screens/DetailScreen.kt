@@ -54,6 +54,7 @@ fun DetailScreen(
 
     Scaffold(
         containerColor = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -149,7 +150,11 @@ private fun TranscriptTab(rec: Recording) {
             }
         }
     } else if (rec.transcript.isNotBlank()) {
-        Text(rec.transcript, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            rec.transcript,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
     } else {
         Text("No transcript available.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
