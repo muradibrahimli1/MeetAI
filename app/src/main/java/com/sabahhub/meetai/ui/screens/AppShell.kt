@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -35,14 +35,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.border
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.haze
+import dev.chrisbanes.haze.hazeChild
 import com.sabahhub.meetai.ui.MeetAiViewModel
-import com.sabahhub.meetai.ui.components.glass
 import com.sabahhub.meetai.ui.theme.Mint
 import com.sabahhub.meetai.ui.theme.Teal
 
@@ -59,6 +65,7 @@ fun AppShell(
     val user by viewModel.user.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var tab by remember { mutableStateOf(Tab.Recorder) }
+    val hazeState = remember { HazeState() }
 
     LaunchedEffect(state.error) {
         state.error?.let {
@@ -68,8 +75,14 @@ fun AppShell(
     }
 
     Box(Modifier.fillMaxSize()) {
-        // Tab content.
-        Box(Modifier.fillMaxSize()) {
+        // Tab content. Padded below the status bar (we draw edge-to-edge).
+        // Marked as the Haze source so the bottom bar blurs whatever scrolls behind it.
+        Box(
+            Modifier
+                .fillMaxSize()
+                .haze(hazeState)
+                .windowInsetsPadding(WindowInsets.statusBars)
+        ) {
             when (tab) {
                 Tab.Recorder -> RecorderScreen(
                     state = state,
@@ -97,6 +110,7 @@ fun AppShell(
 
         BottomBar(
             modifier = Modifier.align(Alignment.BottomCenter),
+            hazeState = hazeState,
             selected = tab,
             recording = state.isRecording,
             paused = state.isPaused,
@@ -116,6 +130,7 @@ fun AppShell(
 @Composable
 private fun BottomBar(
     modifier: Modifier,
+    hazeState: HazeState,
     selected: Tab,
     recording: Boolean,
     paused: Boolean,
@@ -123,6 +138,7 @@ private fun BottomBar(
     onSelectSettings: () -> Unit,
     onCenter: () -> Unit,
 ) {
+    val barShape = RoundedCornerShape(32.dp)
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -130,12 +146,28 @@ private fun BottomBar(
             .padding(horizontal = 24.dp, vertical = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
-        // Glass bar.
+        // Glass bar — Haze blurs the content scrolling behind it; the translucent
+        // white overlay + border add the frosted tint and edge highlight.
         Row(
             Modifier
                 .fillMaxWidth()
                 .height(64.dp)
-                .glass(RoundedCornerShape(32.dp), fillAlpha = 0.12f)
+                .clip(barShape)
+                .hazeChild(
+                    state = hazeState,
+                    shape = barShape,
+                    style = HazeStyle(
+                        tint = HazeTint(Color.White.copy(alpha = 0.10f)),
+                        blurRadius = 24.dp,
+                    ),
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = 0.28f), Color.White.copy(alpha = 0.07f))
+                    ),
+                    shape = barShape,
+                )
                 .padding(horizontal = 28.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -160,8 +192,7 @@ private fun BottomBar(
         }
         Box(
             Modifier
-                .offset(y = (-18).dp)
-                .size(68.dp)
+                .size(64.dp)
                 .background(
                     brush = Brush.linearGradient(listOf(Mint, Teal)),
                     shape = CircleShape,
