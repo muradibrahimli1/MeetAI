@@ -47,6 +47,14 @@ class MeetAiViewModel(
         _themeMode.value = mode
     }
 
+    private val _appLock = MutableStateFlow(appPrefs.appLockEnabled)
+    val appLock: StateFlow<Boolean> = _appLock.asStateFlow()
+
+    fun setAppLock(enabled: Boolean) {
+        appPrefs.appLockEnabled = enabled
+        _appLock.value = enabled
+    }
+
     /** Called once per fresh launch (after mic permission is available). */
     fun maybeAutoStartOnLaunch() {
         if (!_autoStart.value) return

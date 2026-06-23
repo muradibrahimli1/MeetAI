@@ -66,6 +66,7 @@ fun AppShell(
     val session by viewModel.session.collectAsStateWithLifecycle()
     val autoStart by viewModel.autoStart.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val appLock by viewModel.appLock.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var tab by remember { mutableStateOf(Tab.Recorder) }
     var showRestartConfirm by remember { mutableStateOf(false) }
@@ -119,6 +120,8 @@ fun AppShell(
                     authAvailable = viewModel.authAvailable,
                     autoStart = autoStart,
                     onAutoStartChange = viewModel::setAutoStart,
+                    appLock = appLock,
+                    onAppLockChange = viewModel::setAppLock,
                     themeMode = themeMode,
                     onThemeModeChange = viewModel::setThemeMode,
                     onSignIn = viewModel::signIn,

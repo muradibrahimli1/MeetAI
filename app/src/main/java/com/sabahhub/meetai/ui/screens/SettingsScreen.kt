@@ -45,6 +45,8 @@ fun SettingsScreen(
     authAvailable: Boolean,
     autoStart: Boolean,
     onAutoStartChange: (Boolean) -> Unit,
+    appLock: Boolean,
+    onAppLockChange: (Boolean) -> Unit,
     themeMode: ThemeMode,
     onThemeModeChange: (ThemeMode) -> Unit,
     onSignIn: (email: String, password: String) -> Unit,
@@ -106,6 +108,31 @@ fun SettingsScreen(
                         ),
                     )
                 }
+                Spacer(Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "App lock",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        Text(
+                            "Require fingerprint/face unlock to open the app.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Switch(
+                        checked = appLock,
+                        onCheckedChange = onAppLockChange,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.onSecondary,
+                            checkedTrackColor = MaterialTheme.colorScheme.secondary,
+                        ),
+                    )
+                }
+
                 Spacer(Modifier.height(16.dp))
                 Text("Theme", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
                 Spacer(Modifier.height(8.dp))

@@ -5,15 +5,25 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sabahhub.meetai.data.ThemeMode
 import androidx.navigation.compose.NavHost
@@ -24,10 +34,11 @@ import com.sabahhub.meetai.ui.MeetAiViewModel
 import com.sabahhub.meetai.ui.screens.AppShell
 import com.sabahhub.meetai.ui.screens.ChatScreen
 import com.sabahhub.meetai.ui.screens.DetailScreen
+import com.sabahhub.meetai.ui.screens.LockScreen
 import com.sabahhub.meetai.ui.theme.AppBackground
 import com.sabahhub.meetai.ui.theme.MeetAiTheme
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private val viewModel: MeetAiViewModel by viewModels {
         MeetAiViewModel.factory(application as MeetAiApp)
@@ -58,9 +69,28 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
             }
+            val appLock by viewModel.appLock.collectAsStateWithLifecycle()
+            var unlocked by rememberSaveable { mutableStateOf(false) }
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner, appLock) {
+                val obs = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_STOP && appLock) unlocked = false
+                }
+                lifecycleOwner.lifecycle.addObserver(obs)
+                onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+            }
+            val locked = appLock && !unlocked
+            LaunchedEffect(locked) {
+                if (locked) authenticate { ok -> if (ok) unlocked = true }
+            }
+
             MeetAiTheme(darkTheme = darkTheme) {
                 val hazeState = remember { HazeState() }
                 AppBackground(hazeState = hazeState, darkTheme = darkTheme) {
+                    if (locked) {
+                        LockScreen(onUnlock = { authenticate { ok -> if (ok) unlocked = true } })
+                        return@AppBackground
+                    }
                     val navController = rememberNavController()
                     NavHost(navController = navController, startDestination = "shell") {
                         composable("shell") {
@@ -137,6 +167,36 @@ class MainActivity : ComponentActivity() {
         if (!autoStartPending) return
         autoStartPending = false
         viewModel.maybeAutoStartOnLaunch()
+    }
+
+    /** Prompts for biometric/credential auth. Falls back to unlocked if none is set up. */
+    private fun authenticate(onResult: (Boolean) -> Unit) {
+        val authenticators = BiometricManager.Authenticators.BIOMETRIC_WEAK
+        if (BiometricManager.from(this).canAuthenticate(authenticators)
+            != BiometricManager.BIOMETRIC_SUCCESS
+        ) {
+            onResult(true) // No biometric enrolled — don't lock the user out.
+            return
+        }
+        val prompt = BiometricPrompt(
+            this,
+            ContextCompat.getMainExecutor(this),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    onResult(true)
+                }
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    onResult(false)
+                }
+            },
+        )
+        val info = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Unlock MeetAI")
+            .setSubtitle("Authenticate to continue")
+            .setNegativeButtonText("Cancel")
+            .setAllowedAuthenticators(authenticators)
+            .build()
+        prompt.authenticate(info)
     }
 
     companion object {

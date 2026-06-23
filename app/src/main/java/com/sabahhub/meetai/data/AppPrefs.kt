@@ -19,8 +19,14 @@ class AppPrefs(context: Context) {
             .getOrDefault(ThemeMode.SYSTEM)
         set(value) = prefs.edit().putString(KEY_THEME, value.name).apply()
 
+    /** Require biometric/device-credential auth to open the app. */
+    var appLockEnabled: Boolean
+        get() = prefs.getBoolean(KEY_APP_LOCK, false)
+        set(value) = prefs.edit().putBoolean(KEY_APP_LOCK, value).apply()
+
     private companion object {
         const val KEY_AUTO_START = "auto_start_on_launch"
         const val KEY_THEME = "theme_mode"
+        const val KEY_APP_LOCK = "app_lock_enabled"
     }
 }
