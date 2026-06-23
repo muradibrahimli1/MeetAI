@@ -85,6 +85,7 @@ fun AppShell(
                     state = state,
                     hazeState = hazeState,
                     onDiscard = viewModel::discardRecording,
+                    onTogglePause = viewModel::togglePause,
                     onSave = viewModel::saveRecording,
                 )
                 Tab.Library -> LibraryScreen(

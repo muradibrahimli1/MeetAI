@@ -16,6 +16,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,6 +42,7 @@ fun RecorderScreen(
     state: RecordUiState,
     hazeState: HazeState,
     onDiscard: () -> Unit,
+    onTogglePause: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -100,6 +103,12 @@ fun RecorderScreen(
                     icon = Icons.Default.Close,
                     tint = MaterialTheme.colorScheme.error,
                     onClick = onDiscard,
+                )
+                ActionButton(
+                    label = if (state.isPaused) "Resume" else "Pause",
+                    icon = if (state.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                    tint = MaterialTheme.colorScheme.secondary,
+                    onClick = onTogglePause,
                 )
                 ActionButton(
                     label = "Save",
