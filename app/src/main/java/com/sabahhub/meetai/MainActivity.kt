@@ -1,6 +1,7 @@
 package com.sabahhub.meetai
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -31,6 +32,8 @@ class MainActivity : ComponentActivity() {
     // True only for a fresh (cold) launch, so we don't re-record on rotation
     // or when returning from the background.
     private var autoStartPending = false
+    // Set when launched from the Quick Settings tile — always starts recording.
+    private var forceStartPending = false
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
@@ -40,7 +43,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        autoStartPending = savedInstanceState == null
+        forceStartPending = intent?.getBooleanExtra(EXTRA_START_RECORDING, false) == true
+        autoStartPending = savedInstanceState == null && !forceStartPending
         ensurePermissionsThenMaybeAutoStart()
 
         setContent {
@@ -104,10 +108,28 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_START_RECORDING, false)) {
+            forceStartPending = true
+            ensurePermissionsThenMaybeAutoStart()
+        }
+    }
+
     /** Fires the auto-start at most once per fresh launch. */
     private fun maybeAutoStart() {
+        if (forceStartPending) {
+            forceStartPending = false
+            viewModel.startRecording()
+            return
+        }
         if (!autoStartPending) return
         autoStartPending = false
         viewModel.maybeAutoStartOnLaunch()
+    }
+
+    companion object {
+        const val EXTRA_START_RECORDING = "start_recording"
     }
 }
