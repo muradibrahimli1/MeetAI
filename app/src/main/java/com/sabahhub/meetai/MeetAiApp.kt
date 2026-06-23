@@ -5,6 +5,7 @@ import com.sabahhub.meetai.audio.AudioRecorder
 import com.sabahhub.meetai.audio.RecordingController
 import com.sabahhub.meetai.data.AppPrefs
 import com.sabahhub.meetai.data.AudioStore
+import com.sabahhub.meetai.data.TagStore
 import com.sabahhub.meetai.data.remote.AssemblyAiClient
 import com.sabahhub.meetai.data.remote.OpenAiClient
 import com.sabahhub.meetai.data.remote.supabase.SessionStore
@@ -43,6 +44,7 @@ class MeetAiApp : Application() {
     val supabaseRepo by lazy { SupabaseRepository(httpClient, json, supabaseAuth) }
     val audioRecorder by lazy { AudioRecorder(this) }
     val audioStore by lazy { AudioStore(this) }
+    val tagStore by lazy { TagStore(this, json) }
     val appPrefs by lazy { AppPrefs(this) }
 
     // Application-scoped so recording + processing survive Activity destruction
@@ -57,6 +59,7 @@ class MeetAiApp : Application() {
             auth = supabaseAuth,
             repo = supabaseRepo,
             audioStore = audioStore,
+            tagStore = tagStore,
             appContext = this,
             scope = appScope,
         )

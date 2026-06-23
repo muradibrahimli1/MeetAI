@@ -1,7 +1,10 @@
 package com.sabahhub.meetai.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,12 +17,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -127,6 +134,12 @@ fun DetailScreen(
                 )
             }
 
+            TagsSection(
+                tags = rec.tags,
+                onTagsChange = { viewModel.setTags(rec.id, it) },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+
             TabRow(
                 selectedTabIndex = tab,
                 containerColor = Color.Transparent,
@@ -211,18 +224,64 @@ private fun TranscriptTab(rec: Recording, onRenameSpeaker: (String, String) -> U
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SpeakerRenameDialog(current: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+private fun TagsSection(
+    tags: List<String>,
+    onTagsChange: (List<String>) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var showAdd by remember { mutableStateOf(false) }
+    if (showAdd) {
+        SpeakerRenameDialog(
+            current = "",
+            title = "Add tag",
+            label = "Tag",
+            onDismiss = { showAdd = false },
+            onConfirm = { tag -> showAdd = false; onTagsChange((tags + tag.trim()).distinct()) },
+        )
+    }
+    FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        tags.forEach { tag ->
+            InputChip(
+                selected = false,
+                onClick = {},
+                label = { Text(tag) },
+                trailingIcon = {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Remove $tag",
+                        modifier = Modifier.size(16.dp).clickable { onTagsChange(tags - tag) },
+                    )
+                },
+            )
+        }
+        AssistChip(
+            onClick = { showAdd = true },
+            label = { Text("Add tag") },
+            leadingIcon = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp)) },
+        )
+    }
+}
+
+@Composable
+private fun SpeakerRenameDialog(
+    current: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+    title: String = "Rename speaker",
+    label: String = "Name",
+) {
     var text by remember { mutableStateOf(current) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rename speaker") },
+        title = { Text(title) },
         text = {
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
                 singleLine = true,
-                label = { Text("Name") },
+                label = { Text(label) },
             )
         },
         confirmButton = {

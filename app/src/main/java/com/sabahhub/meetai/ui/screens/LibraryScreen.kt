@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -25,6 +27,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +56,7 @@ import dev.chrisbanes.haze.HazeState
 import com.sabahhub.meetai.ui.formatDate
 import com.sabahhub.meetai.ui.formatDuration
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun LibraryScreen(
     recordings: List<Recording>,
@@ -65,10 +68,14 @@ fun LibraryScreen(
     modifier: Modifier = Modifier,
 ) {
     var query by remember { mutableStateOf("") }
-    val filtered = remember(recordings, query) {
-        if (query.isBlank()) recordings
-        else recordings.filter {
-            it.title.contains(query, ignoreCase = true) || it.transcript.contains(query, ignoreCase = true)
+    var selectedTag by remember { mutableStateOf<String?>(null) }
+    val allTags = remember(recordings) { recordings.flatMap { it.tags }.distinct().sorted() }
+    val filtered = remember(recordings, query, selectedTag) {
+        recordings.filter { rec ->
+            (query.isBlank() ||
+                rec.title.contains(query, ignoreCase = true) ||
+                rec.transcript.contains(query, ignoreCase = true)) &&
+                (selectedTag == null || rec.tags.contains(selectedTag))
         }
     }
     val scope = rememberCoroutineScope()
@@ -101,6 +108,19 @@ fun LibraryScreen(
                 unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
             ),
         )
+
+        if (allTags.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                allTags.forEach { tag ->
+                    FilterChip(
+                        selected = selectedTag == tag,
+                        onClick = { selectedTag = if (selectedTag == tag) null else tag },
+                        label = { Text(tag) },
+                    )
+                }
+            }
+        }
         Spacer(Modifier.height(12.dp))
 
         PullToRefreshBox(

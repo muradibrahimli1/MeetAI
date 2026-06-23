@@ -35,4 +35,6 @@ data class Recording(
     val errorMessage: String? = null,
     /** Local path to the audio file; not synced to the cloud. */
     val localAudioPath: String? = null,
+    /** User tags; stored locally on the device (not synced). */
+    val tags: List<String> = emptyList(),
 )

@@ -5,6 +5,7 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import com.sabahhub.meetai.data.AudioStore
+import com.sabahhub.meetai.data.TagStore
 import com.sabahhub.meetai.data.model.Recording
 import com.sabahhub.meetai.data.model.RecordingStatus
 import com.sabahhub.meetai.data.remote.AssemblyAiClient
@@ -56,6 +57,7 @@ class RecordingController(
     private val auth: SupabaseAuth,
     private val repo: SupabaseRepository,
     private val audioStore: AudioStore,
+    private val tagStore: TagStore,
     private val appContext: Context,
     private val scope: CoroutineScope,
 ) {
@@ -224,6 +226,7 @@ class RecordingController(
         _local.value = _local.value.filterNot { it.id == id }
         _cloud.value = _cloud.value.filterNot { it.id == id }
         audioStore.remove(id)
+        tagStore.remove(id)
         if (auth.accessToken == null) return@launch
         runCatching { repo.delete(id) }
     }
@@ -343,14 +346,26 @@ class RecordingController(
     }
 
     private fun upsertLocal(recording: Recording) {
-        _local.value = (listOf(recording) + _local.value.filterNot { it.id == recording.id })
+        val tagged = recording.copy(tags = tagStore.get(recording.id))
+        _local.value = (listOf(tagged) + _local.value.filterNot { it.id == recording.id })
             .sortedByDescending { it.createdAt }
     }
 
     private suspend fun refreshCloud() {
         runCatching { repo.list() }
-            .onSuccess { list -> _cloud.value = list.map { it.copy(localAudioPath = audioStore.get(it.id)) } }
+            .onSuccess { list ->
+                _cloud.value = list.map {
+                    it.copy(localAudioPath = audioStore.get(it.id), tags = tagStore.get(it.id))
+                }
+            }
             .onFailure { setError("Couldn't load cloud recordings: ${it.message}") }
+    }
+
+    fun setTags(id: String, tags: List<String>) = scope.launch {
+        tagStore.set(id, tags)
+        val clean = tagStore.get(id)
+        _local.value = _local.value.map { if (it.id == id) it.copy(tags = clean) else it }
+        _cloud.value = _cloud.value.map { if (it.id == id) it.copy(tags = clean) else it }
     }
 
     private fun defaultTitle(epochMs: Long): String =
