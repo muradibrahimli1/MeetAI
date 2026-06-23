@@ -48,6 +48,7 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeChild
 import com.sabahhub.meetai.ui.MeetAiViewModel
 import com.sabahhub.meetai.ui.theme.Mint
+import com.sabahhub.meetai.ui.theme.Navy
 import com.sabahhub.meetai.ui.theme.Teal
 
 private enum class Tab { Recorder, Library, Settings }
@@ -155,6 +156,7 @@ private fun BottomBar(
                     state = hazeState,
                     shape = barShape,
                     style = HazeStyle(
+                        backgroundColor = Navy,
                         tint = HazeTint(Color.White.copy(alpha = 0.10f)),
                         blurRadius = 24.dp,
                     ),

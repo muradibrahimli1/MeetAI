@@ -16,6 +16,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeChild
+import com.sabahhub.meetai.ui.theme.Navy
 
 /**
  * Frosted-glass surface styling. When [hazeState] is supplied, the surface uses
@@ -34,7 +35,11 @@ fun Modifier.glass(
         base.hazeChild(
             state = hazeState,
             shape = shape,
-            style = HazeStyle(tint = HazeTint(Color.White.copy(alpha = fillAlpha)), blurRadius = 24.dp),
+            style = HazeStyle(
+                backgroundColor = Navy,
+                tint = HazeTint(Color.White.copy(alpha = fillAlpha)),
+                blurRadius = 24.dp,
+            ),
         )
     } else {
         base.background(Color.White.copy(alpha = fillAlpha))
