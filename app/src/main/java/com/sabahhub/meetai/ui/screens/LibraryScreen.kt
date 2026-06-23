@@ -38,12 +38,14 @@ import com.sabahhub.meetai.data.model.Recording
 import com.sabahhub.meetai.data.model.RecordingStatus
 import com.sabahhub.meetai.ui.components.GlassCard
 import com.sabahhub.meetai.ui.components.glass
+import dev.chrisbanes.haze.HazeState
 import com.sabahhub.meetai.ui.formatDate
 import com.sabahhub.meetai.ui.formatDuration
 
 @Composable
 fun LibraryScreen(
     recordings: List<Recording>,
+    hazeState: HazeState,
     onOpen: (String) -> Unit,
     onDelete: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -72,7 +74,7 @@ fun LibraryScreen(
                 contentPadding = PaddingValues(bottom = 120.dp),
             ) {
                 items(recordings, key = { it.id }) { rec ->
-                    RecordingCard(rec = rec, onOpen = { onOpen(rec.id) }, onDelete = { onDelete(rec.id) })
+                    RecordingCard(rec = rec, hazeState = hazeState, onOpen = { onOpen(rec.id) }, onDelete = { onDelete(rec.id) })
                 }
             }
         }
@@ -80,10 +82,10 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun RecordingCard(rec: Recording, onOpen: () -> Unit, onDelete: () -> Unit) {
+private fun RecordingCard(rec: Recording, hazeState: HazeState, onOpen: () -> Unit, onDelete: () -> Unit) {
     var menuOpen by remember { mutableStateOf(false) }
 
-    GlassCard(Modifier.fillMaxWidth(), cornerRadius = 20.dp) {
+    GlassCard(Modifier.fillMaxWidth(), cornerRadius = 20.dp, hazeState = hazeState) {
         Row(
             Modifier
                 .clickable(onClick = onOpen)

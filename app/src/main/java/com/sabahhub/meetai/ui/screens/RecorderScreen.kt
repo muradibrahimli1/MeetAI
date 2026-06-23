@@ -34,10 +34,12 @@ import com.sabahhub.meetai.ui.components.glass
 import com.sabahhub.meetai.ui.formatDuration
 import com.sabahhub.meetai.data.model.Recording
 import com.sabahhub.meetai.data.model.RecordingStatus
+import dev.chrisbanes.haze.HazeState
 
 @Composable
 fun RecorderScreen(
     state: RecordUiState,
+    hazeState: HazeState,
     onDiscard: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
@@ -58,7 +60,7 @@ fun RecorderScreen(
 
         Spacer(Modifier.weight(1f))
 
-        GlassCard(Modifier.fillMaxWidth()) {
+        GlassCard(Modifier.fillMaxWidth(), hazeState = hazeState) {
             Waveform(
                 amplitudes = state.amplitudes,
                 modifier = Modifier

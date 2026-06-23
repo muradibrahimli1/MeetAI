@@ -2,10 +2,11 @@ package com.sabahhub.meetai
 
 import android.app.Application
 import com.sabahhub.meetai.audio.AudioRecorder
-import com.sabahhub.meetai.auth.AuthManager
 import com.sabahhub.meetai.data.remote.AssemblyAiClient
 import com.sabahhub.meetai.data.remote.OpenAiClient
-import com.sabahhub.meetai.data.sync.FirestoreSync
+import com.sabahhub.meetai.data.remote.supabase.SessionStore
+import com.sabahhub.meetai.data.remote.supabase.SupabaseAuth
+import com.sabahhub.meetai.data.remote.supabase.SupabaseRepository
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -31,8 +32,9 @@ class MeetAiApp : Application() {
 
     val assemblyAi by lazy { AssemblyAiClient(httpClient, json) }
     val openAi by lazy { OpenAiClient(httpClient, json) }
-    val authManager by lazy { AuthManager() }
-    val firestoreSync by lazy { FirestoreSync() }
+    private val sessionStore by lazy { SessionStore(this, json) }
+    val supabaseAuth by lazy { SupabaseAuth(httpClient, json, sessionStore) }
+    val supabaseRepo by lazy { SupabaseRepository(httpClient, json, supabaseAuth) }
     val audioRecorder by lazy { AudioRecorder(this) }
 
     override fun onCreate() {

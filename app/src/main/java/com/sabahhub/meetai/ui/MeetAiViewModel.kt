@@ -7,20 +7,21 @@ import androidx.lifecycle.viewModelScope
 import com.sabahhub.meetai.MeetAiApp
 import com.sabahhub.meetai.audio.AudioRecorder
 import com.sabahhub.meetai.audio.RecordingService
-import com.sabahhub.meetai.auth.AuthManager
 import com.sabahhub.meetai.data.model.Recording
 import com.sabahhub.meetai.data.model.RecordingStatus
 import com.sabahhub.meetai.data.remote.AssemblyAiClient
 import com.sabahhub.meetai.data.remote.OpenAiClient
-import com.sabahhub.meetai.data.sync.FirestoreSync
-import com.google.firebase.auth.FirebaseUser
+import com.sabahhub.meetai.data.remote.supabase.SupabaseAuth
+import com.sabahhub.meetai.data.remote.supabase.SupabaseRepository
+import com.sabahhub.meetai.data.remote.supabase.SupabaseSession
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -48,37 +49,49 @@ class MeetAiViewModel(
     private val recorder: AudioRecorder,
     private val assemblyAi: AssemblyAiClient,
     private val openAi: OpenAiClient,
-    private val auth: AuthManager,
-    private val sync: FirestoreSync,
+    private val auth: SupabaseAuth,
+    private val repo: SupabaseRepository,
     private val appContext: Context,
 ) : ViewModel() {
 
     private val _record = MutableStateFlow(RecordUiState())
     val record: StateFlow<RecordUiState> = _record.asStateFlow()
 
-    val user: StateFlow<FirebaseUser?> = auth.user
+    val session: StateFlow<SupabaseSession?> = auth.session
 
-    /** Whether Firebase (sign-in + cloud sync) is configured in this build. */
+    /** Whether Supabase (sign-in + cloud sync) is configured in this build. */
     val authAvailable: Boolean = auth.available
 
     /**
-     * In-memory history for the current session. Used when Firebase isn't
-     * configured or the user isn't signed in, so recordings are still visible
-     * (they just don't survive an app restart until cloud sync is enabled).
+     * In-memory history for the current session, used when signed out. When
+     * signed in, [_cloud] (fetched from Supabase) is shown instead.
      */
     private val _local = MutableStateFlow<List<Recording>>(emptyList())
+    private val _cloud = MutableStateFlow<List<Recording>>(emptyList())
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val recordings: StateFlow<List<Recording>> = auth.user
-        .flatMapLatest { u ->
-            if (u != null && sync.available) sync.observeRecordings(u.uid).catch { emit(emptyList()) }
-            else _local
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val recordings: StateFlow<List<Recording>> =
+        combine(auth.session, _local, _cloud) { session, local, cloud ->
+            if (session != null && repo.available) cloud else local
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    init {
+        // Whenever the signed-in user changes, refresh the cloud list (or clear it).
+        auth.session
+            .onEach { session ->
+                if (session != null && repo.available) refreshCloud() else _cloud.value = emptyList()
+            }
+            .launchIn(viewModelScope)
+    }
 
     private fun upsertLocal(recording: Recording) {
         _local.value = (listOf(recording) + _local.value.filterNot { it.id == recording.id })
             .sortedByDescending { it.createdAt }
+    }
+
+    private suspend fun refreshCloud() {
+        runCatching { repo.list() }
+            .onSuccess { _cloud.value = it }
+            .onFailure { _record.value = _record.value.copy(error = "Couldn't load cloud recordings: ${it.message}") }
     }
 
     // Elapsed time is accumulated so it freezes while paused.
@@ -88,12 +101,20 @@ class MeetAiViewModel(
 
     // --- auth ---------------------------------------------------------------
 
-    fun signIn(context: Context) = viewModelScope.launch {
-        runCatching { auth.signInWithGoogle(context) }
+    fun signIn(email: String, password: String) = viewModelScope.launch {
+        runCatching { auth.signIn(email, password) }
             .onFailure { _record.value = _record.value.copy(error = it.message) }
     }
 
-    fun signOut() = auth.signOut()
+    fun signUp(email: String, password: String) = viewModelScope.launch {
+        runCatching { auth.signUp(email, password) }
+            .onFailure { _record.value = _record.value.copy(error = it.message) }
+    }
+
+    fun signOut() {
+        auth.signOut()
+        _cloud.value = emptyList()
+    }
 
     // --- recording ----------------------------------------------------------
 
@@ -222,14 +243,18 @@ class MeetAiViewModel(
 
     private suspend fun persist(recording: Recording) {
         upsertLocal(recording)                       // always keep session history
-        val uid = auth.uid ?: return                 // not signed in — nothing to sync to
-        runCatching { sync.save(uid, recording) }    // also push to the cloud
+        if (auth.accessToken == null) return         // not signed in — nothing to sync to
+        runCatching {
+            repo.upsert(recording)                   // push to Supabase
+            refreshCloud()                           // reflect it in the cloud list
+        }
     }
 
     fun deleteRecording(id: String) = viewModelScope.launch {
         _local.value = _local.value.filterNot { it.id == id }
-        val uid = auth.uid ?: return@launch
-        runCatching { sync.delete(uid, id) }
+        _cloud.value = _cloud.value.filterNot { it.id == id }
+        if (auth.accessToken == null) return@launch
+        runCatching { repo.delete(id) }
     }
 
     fun clearError() { _record.value = _record.value.copy(error = null) }
@@ -250,8 +275,8 @@ class MeetAiViewModel(
                         recorder = app.audioRecorder,
                         assemblyAi = app.assemblyAi,
                         openAi = app.openAi,
-                        auth = app.authManager,
-                        sync = app.firestoreSync,
+                        auth = app.supabaseAuth,
+                        repo = app.supabaseRepo,
                         appContext = app.applicationContext,
                     ) as T
             }

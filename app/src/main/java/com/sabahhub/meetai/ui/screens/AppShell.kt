@@ -39,14 +39,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.border
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
 import com.sabahhub.meetai.ui.MeetAiViewModel
 import com.sabahhub.meetai.ui.theme.Mint
@@ -57,15 +55,14 @@ private enum class Tab { Recorder, Library, Settings }
 @Composable
 fun AppShell(
     viewModel: MeetAiViewModel,
+    hazeState: HazeState,
     onOpenRecording: (String) -> Unit,
 ) {
-    val context = LocalContext.current
     val state by viewModel.record.collectAsStateWithLifecycle()
     val recordings by viewModel.recordings.collectAsStateWithLifecycle()
-    val user by viewModel.user.collectAsStateWithLifecycle()
+    val session by viewModel.session.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var tab by remember { mutableStateOf(Tab.Recorder) }
-    val hazeState = remember { HazeState() }
 
     LaunchedEffect(state.error) {
         state.error?.let {
@@ -76,28 +73,29 @@ fun AppShell(
 
     Box(Modifier.fillMaxSize()) {
         // Tab content. Padded below the status bar (we draw edge-to-edge).
-        // Marked as the Haze source so the bottom bar blurs whatever scrolls behind it.
         Box(
             Modifier
                 .fillMaxSize()
-                .haze(hazeState)
                 .windowInsetsPadding(WindowInsets.statusBars)
         ) {
             when (tab) {
                 Tab.Recorder -> RecorderScreen(
                     state = state,
+                    hazeState = hazeState,
                     onDiscard = viewModel::discardRecording,
                     onSave = viewModel::saveRecording,
                 )
                 Tab.Library -> LibraryScreen(
                     recordings = recordings,
+                    hazeState = hazeState,
                     onOpen = onOpenRecording,
                     onDelete = viewModel::deleteRecording,
                 )
                 Tab.Settings -> SettingsScreen(
-                    user = user,
+                    session = session,
                     authAvailable = viewModel.authAvailable,
-                    onSignIn = { viewModel.signIn(context) },
+                    onSignIn = viewModel::signIn,
+                    onSignUp = viewModel::signUp,
                     onSignOut = viewModel::signOut,
                 )
             }

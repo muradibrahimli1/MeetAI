@@ -8,9 +8,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.runtime.remember
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import dev.chrisbanes.haze.HazeState
 import com.sabahhub.meetai.ui.MeetAiViewModel
 import com.sabahhub.meetai.ui.screens.AppShell
 import com.sabahhub.meetai.ui.screens.DetailScreen
@@ -33,12 +35,14 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MeetAiTheme {
-                AppBackground {
+                val hazeState = remember { HazeState() }
+                AppBackground(hazeState = hazeState) {
                     val navController = rememberNavController()
                     NavHost(navController = navController, startDestination = "shell") {
                         composable("shell") {
                             AppShell(
                                 viewModel = viewModel,
+                                hazeState = hazeState,
                                 onOpenRecording = { id -> navController.navigate("detail/$id") },
                             )
                         }

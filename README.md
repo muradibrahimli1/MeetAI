@@ -6,8 +6,8 @@ An Android app that records voice, then on stop **transcribes** it, **detects mu
 
 ```
  ┌──────────┐   m4a    ┌─────────────┐  transcript   ┌────────────┐  summary  ┌───────────┐
- │  Record  │ ───────► │ AssemblyAI  │ ────────────► │  OpenAI    │ ────────► │ Firestore │
- │ (mic)    │  upload  │ diarization │  + language   │  gpt-4o    │   notes   │  (synced) │
+ │  Record  │ ───────► │ AssemblyAI  │ ────────────► │  OpenAI    │ ────────► │ Supabase  │
+ │ (mic)    │  upload  │ diarization │  + language   │  gpt-4o    │   notes   │ (Postgres)│
  └──────────┘          │  + detect   │               └────────────┘           └───────────┘
                        └─────────────┘
 ```
@@ -15,13 +15,13 @@ An Android app that records voice, then on stop **transcribes** it, **detects mu
 - **Recording** — `MediaRecorder` captures compressed AAC (`.m4a`). A foreground service keeps the mic alive in the background.
 - **Transcription + speakers + language** — [AssemblyAI](https://www.assemblyai.com/) in one job (`speaker_labels: true`, `language_detection: true`). Whisper alone does **not** do speaker diarization, which is why AssemblyAI handles transcription here.
 - **Summary** — OpenAI `gpt-4o` turns the speaker-labeled transcript into Markdown notes (Summary / Key Points / Decisions / Action Items), replying in the transcript's own language.
-- **Sync** — Firebase Auth (Google) scopes data per user; Firestore stores transcript + summary at `users/{uid}/recordings/{id}` with offline persistence (so it works offline too). Audio files stay on-device and are not uploaded.
+- **Auth + Sync** — [Supabase](https://supabase.com/) email/password auth (via GoTrue REST) and a `recordings` table (via PostgREST), scoped per user by row-level security. No SDK — plain OkHttp calls. Audio files stay on-device; only transcript/summary metadata sync.
 
 > **Security note:** API keys are baked into the APK via `BuildConfig` (read from `local.properties`). This is fine for a **personal** app you don't distribute — anyone who decompiles a shipped APK could extract the keys. If you ever publish this, move the AssemblyAI/OpenAI calls behind a small backend proxy and keep the keys server-side.
 
 ## Tech stack
 
-Kotlin · Jetpack Compose (Material 3) · Coroutines · OkHttp + kotlinx.serialization · Firebase Auth + Firestore · AssemblyAI · OpenAI.
+Kotlin · Jetpack Compose (Material 3) · Coroutines · OkHttp + kotlinx.serialization · Haze (glass blur) · Supabase (auth + Postgres) · AssemblyAI · OpenAI.
 
 ## Project layout
 
@@ -32,17 +32,18 @@ app/src/main/java/com/sabahhub/meetai/
 ├── audio/
 │   ├── AudioRecorder.kt    # MediaRecorder wrapper (-> .m4a)
 │   └── RecordingService.kt # foreground mic service
-├── auth/AuthManager.kt     # Google Sign-In -> Firebase Auth
 ├── data/
 │   ├── model/Recording.kt  # domain model + status enum
 │   ├── remote/
 │   │   ├── AssemblyAiClient.kt  # upload -> transcribe (diarize+lang) -> poll
-│   │   ├── OpenAiClient.kt      # gpt-4o summary
-│   │   └── dto/                 # serialization DTOs
-│   └── sync/FirestoreSync.kt    # per-user cloud store (offline-capable)
+│   │   ├── OpenAiClient.kt      # gpt-4o title + summary (JSON)
+│   │   ├── dto/                 # serialization DTOs
+│   │   └── supabase/            # SupabaseAuth, SupabaseRepository, SessionStore (REST)
 └── ui/
-    ├── MeetAiViewModel.kt  # orchestrates record -> transcribe -> summarize -> save
-    └── screens/            # HomeScreen (record + history), DetailScreen (summary/transcript)
+    ├── MeetAiViewModel.kt  # orchestrates record -> transcribe -> summarize -> save/sync
+    ├── theme/              # palette + gradient background (Haze source)
+    ├── components/         # Glass (Haze), Waveform, MarkdownText
+    └── screens/            # AppShell (nav), Recorder, Library, Settings, Detail
 ```
 
 ## Setup
@@ -58,34 +59,41 @@ Copy the template and fill it in:
 cp local.properties.template local.properties
 ```
 
-Set `ASSEMBLYAI_API_KEY`, `OPENAI_API_KEY`, and `WEB_CLIENT_ID` (see step 3).
+Set `ASSEMBLYAI_API_KEY`, `OPENAI_API_KEY`, and the Supabase values (see step 3).
 Make sure `sdk.dir` points at your Android SDK.
 
-### 3. Firebase (optional — for sign-in + cloud sync)
-**You can skip this and build/run right away.** Without `google-services.json`, the
-`google-services` plugin is not applied, sign-in is hidden, and recordings are kept
-in an in-memory session history (they don't survive an app restart). Add Firebase
-when you want cloud sync across devices.
+### 3. Supabase (optional — for sign-in + cloud sync)
+**You can skip this and build/run right away.** With `SUPABASE_URL`/`SUPABASE_ANON_KEY`
+blank, sign-in is hidden and recordings are kept in an in-memory session history
+(they don't survive an app restart). Add Supabase for email login + sync across devices.
 
-1. Create a project at <https://console.firebase.google.com>.
-2. Add an Android app with package name **`com.sabahhub.meetai`**.
-3. Download `google-services.json` into **`app/`**.
-4. In **Authentication → Sign-in method**, enable **Google**.
-5. Add your debug SHA-1 to the Android app (Project settings → your app → Add fingerprint). Get it with:
-   ```bash
-   ./gradlew signingReport      # look for the "debug" variant SHA-1
-   ```
-6. Copy the **Web client ID** (Authentication → Google provider, or Google Cloud → Credentials → "Web client (auto created…)") into `WEB_CLIENT_ID` in `local.properties`.
-7. In **Firestore Database**, create a database and use these rules so each user only sees their own data:
-   ```
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{db}/documents {
-       match /users/{uid}/recordings/{doc} {
-         allow read, write: if request.auth != null && request.auth.uid == uid;
-       }
-     }
-   }
+1. Create a project at <https://supabase.com/dashboard>.
+2. **Settings → API**: copy the **Project URL** and **anon public** key into
+   `SUPABASE_URL` / `SUPABASE_ANON_KEY` in `local.properties`.
+3. **Authentication → Providers → Email**: enable it and **turn off "Confirm email"**
+   (so signup logs you straight in).
+4. **SQL Editor**: run this to create the table + row-level security:
+   ```sql
+   create table public.recordings (
+     id            uuid primary key,
+     user_id       uuid not null default auth.uid() references auth.users (id) on delete cascade,
+     created_at    int8 not null,
+     title         text not null,
+     duration_ms   int8 not null default 0,
+     status        text not null default 'DONE',
+     language      text,
+     transcript    text not null default '',
+     summary       text not null default '',
+     error_message text,
+     utterances    jsonb not null default '[]'::jsonb
+   );
+
+   alter table public.recordings enable row level security;
+
+   create policy "own rows" on public.recordings
+     for all
+     using  (auth.uid() = user_id)
+     with check (auth.uid() = user_id);
    ```
 
 ### 4. Build & run
@@ -99,19 +107,20 @@ Open the project in Android Studio and press Run, or:
 > `export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"`. Android Studio uses the right JDK automatically.
 
 ## Usage
-1. Launch the app and **Sign in with Google** (required for cloud sync).
-2. Tap the **mic** to start recording; tap **stop** to finish.
+1. (Optional) In **Settings**, sign up / sign in with email + password to enable cloud sync.
+2. On the **Recorder** tab, tap the **mic** to start; it toggles **pause/resume**. Use **Discard** to drop it or **Save** to process.
 3. Watch the status: *Uploading → Transcribing & detecting speakers → Summarizing*.
-4. The finished recording appears in **History**; tap it for the **Summary** and speaker-labeled **Transcript** tabs. Use **Share** to export as text.
+4. The finished recording appears in **Library** with an AI-generated title; tap it for the **Summary** and speaker-labeled **Transcript** tabs. Use **Share** to export as text.
 
 ## Notes & limits
 - AssemblyAI bills per audio hour; OpenAI bills per token. Both are pay-as-you-go.
 - Very long recordings = longer transcription polling; the HTTP client is configured with no overall call timeout to accommodate this.
 - Language detection and diarization quality depend on audio clarity and having distinct speakers.
-- Summaries render as plain text today (Markdown source). Add a Markdown renderer (e.g. `compose-markdown`) if you want formatted output.
+- Haze backdrop blur is best on Android 12+; older devices fall back to a tint.
+- Cloud sync refreshes on sign-in and after each save/delete (no live realtime listener).
 
 ## Possible next steps
 - Backend proxy for keys (if distributing).
-- Upload audio to Firebase Storage for cross-device playback.
+- Upload audio to Supabase Storage for cross-device playback.
+- Realtime sync (Supabase Realtime) instead of refresh-on-change.
 - Rename recordings / search history.
-- Pause & resume recording.

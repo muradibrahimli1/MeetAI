@@ -13,6 +13,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
 
 private val MeetAiColors = darkColorScheme(
     primary = Teal,
@@ -40,25 +42,27 @@ fun MeetAiTheme(content: @Composable () -> Unit) {
  * "glassmorphism" look.
  */
 @Composable
-fun AppBackground(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Box(
-        modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    0.0f to NavyDeep,
-                    0.55f to Navy,
-                    1.0f to Color(0xFF0C3A52), // navy easing toward teal at the bottom
-                )
-            )
-    ) {
-        // Decorative blurred blobs.
+fun AppBackground(
+    modifier: Modifier = Modifier,
+    hazeState: HazeState? = null,
+    content: @Composable () -> Unit,
+) {
+    Box(modifier.fillMaxSize()) {
+        // Gradient + blurred blobs. Marked as the Haze source so glass surfaces
+        // layered on top can genuinely blur it.
         Box(
             Modifier
                 .fillMaxSize()
-                .blur(90.dp)
+                .background(
+                    Brush.verticalGradient(
+                        0.0f to NavyDeep,
+                        0.55f to Navy,
+                        1.0f to Color(0xFF0C3A52), // navy easing toward teal at the bottom
+                    )
+                )
+                .then(if (hazeState != null) Modifier.haze(hazeState) else Modifier)
         ) {
-            Blobs()
+            Box(Modifier.fillMaxSize().blur(90.dp)) { Blobs() }
         }
         content()
     }

@@ -11,7 +11,7 @@ ASSEMBLYAI_API_KEY=your_assemblyai_key
 # OpenAI: https://platform.openai.com/api-keys
 OPENAI_API_KEY=sk-your_openai_key
 
-# Firebase OAuth 2.0 *Web* client ID (Firebase console > Authentication >
-# Sign-in method > Google, or APIs & Services > Credentials > Web client).
-# Used for Google Sign-In via Credential Manager.
-WEB_CLIENT_ID=xxxxxxxxxxxx-xxxxxxxx.apps.googleusercontent.com
+# Supabase (email/password auth + cloud sync). From your Supabase project:
+# Settings > API > Project URL and the "anon public" key.
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_ANON_KEY=your_anon_public_key

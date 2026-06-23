@@ -5,16 +5,6 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.compiler)
-    // Applied conditionally below — the project still builds (without cloud sync)
-    // before you add Firebase's google-services.json.
-    alias(libs.plugins.google.services) apply false
-}
-
-// Only wire up Firebase if its config file is present. Drop google-services.json
-// into app/ to enable Google Sign-In + Firestore cloud sync.
-val firebaseConfigured = project.file("google-services.json").exists()
-if (firebaseConfigured) {
-    apply(plugin = "com.google.gms.google-services")
 }
 
 // Load API keys from local.properties (which is git-ignored). See README.
@@ -39,8 +29,9 @@ android {
         // acceptable here, but anyone who decompiles the APK can read them.
         buildConfigField("String", "ASSEMBLYAI_API_KEY", "\"${secret("ASSEMBLYAI_API_KEY")}\"")
         buildConfigField("String", "OPENAI_API_KEY", "\"${secret("OPENAI_API_KEY")}\"")
-        // OAuth 2.0 Web client ID from Firebase console (for Google Sign-In).
-        buildConfigField("String", "WEB_CLIENT_ID", "\"${secret("WEB_CLIENT_ID")}\"")
+        // Supabase project URL + anon (public) key — for email/password auth + sync.
+        buildConfigField("String", "SUPABASE_URL", "\"${secret("SUPABASE_URL")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${secret("SUPABASE_ANON_KEY")}\"")
 
         vectorDrawables { useSupportLibrary = true }
     }
@@ -86,16 +77,8 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
 
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
-
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.firestore)
-    implementation(libs.firebase.auth)
-    implementation(libs.androidx.credentials)
-    implementation(libs.androidx.credentials.play.services)
-    implementation(libs.googleid)
 }
