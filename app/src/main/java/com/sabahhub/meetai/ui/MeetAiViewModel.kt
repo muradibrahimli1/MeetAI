@@ -154,7 +154,12 @@ class MeetAiViewModel(
             _record.value = _record.value.copy(processing = recording)
 
             val summary = openAi.summarize(result.text)
-            recording = recording.copy(status = RecordingStatus.DONE, summary = summary)
+            recording = recording.copy(
+                status = RecordingStatus.DONE,
+                summary = summary.summary,
+                // Use the AI-generated title; fall back to the timestamp title.
+                title = summary.title.ifBlank { recording.title },
+            )
 
             persist(recording)
             _record.value = _record.value.copy(processing = null)

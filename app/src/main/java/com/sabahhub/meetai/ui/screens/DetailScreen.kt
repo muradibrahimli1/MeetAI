@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Intent
 import com.sabahhub.meetai.data.model.Recording
 import com.sabahhub.meetai.ui.MeetAiViewModel
+import com.sabahhub.meetai.ui.components.MarkdownText
 import com.sabahhub.meetai.ui.formatDate
 import com.sabahhub.meetai.ui.formatDuration
 
@@ -109,8 +110,7 @@ private fun SummaryTab(rec: Recording) {
     if (rec.summary.isBlank()) {
         Text(rec.errorMessage ?: "No summary available.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     } else {
-        // Summary is Markdown; rendered as plain text for now (no markdown lib).
-        Text(rec.summary, style = MaterialTheme.typography.bodyMedium)
+        MarkdownText(rec.summary)
     }
 }
 
