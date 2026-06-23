@@ -60,6 +60,9 @@ class MeetAiViewModel(
     fun clearError() = controller.clearError()
     suspend fun refresh() = controller.refresh()
 
+    suspend fun regenerateSummary(id: String, style: com.sabahhub.meetai.data.remote.OpenAiClient.SummaryStyle) =
+        controller.regenerateSummary(id, style)
+
     /** Ask a question about a transcript. [history] = (fromUser, text) turns. */
     suspend fun ask(transcript: String, history: List<Pair<Boolean, String>>): String =
         controller.ask(

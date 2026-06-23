@@ -28,14 +28,28 @@ class OpenAiClient(
 ) {
     data class Result(val title: String, val summary: String)
 
-    suspend fun summarize(transcript: String): Result = withContext(Dispatchers.IO) {
+    /** Summary presentation styles offered to the user. */
+    enum class SummaryStyle(val label: String, val instruction: String) {
+        STRUCTURED("Structured", ""),
+        BULLETS("Bullet points", "Make the summary skimmable: concise bullet points, minimal prose."),
+        NARRATIVE("Narrative", "Write the summary as flowing prose paragraphs — no headings or bullet lists."),
+        ACTION_FOCUSED("Action-focused", "Emphasize decisions and action items; keep other sections brief."),
+    }
+
+    suspend fun summarize(
+        transcript: String,
+        style: SummaryStyle = SummaryStyle.STRUCTURED,
+    ): Result = withContext(Dispatchers.IO) {
         require(apiKey.isNotBlank()) { "OPENAI_API_KEY is missing — set it in local.properties" }
         if (transcript.isBlank()) return@withContext Result(title = "", summary = "")
+
+        val system = if (style.instruction.isBlank()) SYSTEM_PROMPT
+        else "$SYSTEM_PROMPT\n\nStyle preference: ${style.instruction}"
 
         val request = ChatRequest(
             model = model,
             messages = listOf(
-                ChatMessage("system", SYSTEM_PROMPT),
+                ChatMessage("system", system),
                 ChatMessage("user", transcript),
             ),
             responseFormat = ResponseFormat("json_object"),

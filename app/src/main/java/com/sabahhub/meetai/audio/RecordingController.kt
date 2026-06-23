@@ -242,6 +242,17 @@ class RecordingController(
     suspend fun ask(transcript: String, history: List<com.sabahhub.meetai.data.remote.dto.ChatMessage>): String =
         openAi.ask(transcript, history)
 
+    /** Regenerate a recording's summary in the given style; keeps the title. */
+    suspend fun regenerateSummary(id: String, style: OpenAiClient.SummaryStyle) {
+        val rec = (_cloud.value + _local.value).firstOrNull { it.id == id } ?: return
+        if (rec.transcript.isBlank()) return
+        val result = openAi.summarize(rec.transcript, style)
+        val summary = result.summary.ifBlank { return }
+        _local.value = _local.value.map { if (it.id == id) it.copy(summary = summary) else it }
+        _cloud.value = _cloud.value.map { if (it.id == id) it.copy(summary = summary) else it }
+        if (auth.accessToken != null) runCatching { repo.upsert(rec.copy(summary = summary)) }
+    }
+
     private fun setError(message: String?) { _record.value = _record.value.copy(error = message) }
 
     // --- audio focus (auto-pause during phone calls / interruptions) --------
