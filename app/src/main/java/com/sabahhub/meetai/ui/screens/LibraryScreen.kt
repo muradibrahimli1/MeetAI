@@ -17,24 +17,34 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import com.sabahhub.meetai.data.model.Recording
 import com.sabahhub.meetai.data.model.RecordingStatus
 import com.sabahhub.meetai.ui.components.GlassCard
@@ -43,14 +53,27 @@ import dev.chrisbanes.haze.HazeState
 import com.sabahhub.meetai.ui.formatDate
 import com.sabahhub.meetai.ui.formatDuration
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
     recordings: List<Recording>,
     hazeState: HazeState,
     onOpen: (String) -> Unit,
     onDelete: (String) -> Unit,
+    onRename: (String, String) -> Unit,
+    onRefresh: suspend () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var query by remember { mutableStateOf("") }
+    val filtered = remember(recordings, query) {
+        if (query.isBlank()) recordings
+        else recordings.filter {
+            it.title.contains(query, ignoreCase = true) || it.transcript.contains(query, ignoreCase = true)
+        }
+    }
+    val scope = rememberCoroutineScope()
+    var refreshing by remember { mutableStateOf(false) }
+
     Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(24.dp))
         Text(
@@ -59,23 +82,58 @@ fun LibraryScreen(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
 
-        if (recordings.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    "No recordings yet.\nTap the mic to start.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 120.dp),
-            ) {
-                items(recordings, key = { it.id }) { rec ->
-                    RecordingCard(rec = rec, hazeState = hazeState, onOpen = { onOpen(rec.id) }, onDelete = { onDelete(rec.id) })
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            singleLine = true,
+            placeholder = { Text("Search recordings") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                cursorColor = MaterialTheme.colorScheme.secondary,
+                focusedLeadingIconColor = MaterialTheme.colorScheme.secondary,
+                unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
+        )
+        Spacer(Modifier.height(12.dp))
+
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = {
+                refreshing = true
+                scope.launch { onRefresh(); refreshing = false }
+            },
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            if (filtered.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        if (recordings.isEmpty()) "No recordings yet.\nTap the mic to start."
+                        else "No matches for \"$query\".",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 120.dp),
+                ) {
+                    items(filtered, key = { it.id }) { rec ->
+                        RecordingCard(
+                            rec = rec,
+                            hazeState = hazeState,
+                            onOpen = { onOpen(rec.id) },
+                            onDelete = { onDelete(rec.id) },
+                            onRename = { newTitle -> onRename(rec.id, newTitle) },
+                        )
+                    }
                 }
             }
         }
@@ -83,8 +141,37 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun RecordingCard(rec: Recording, hazeState: HazeState, onOpen: () -> Unit, onDelete: () -> Unit) {
+private fun RecordingCard(
+    rec: Recording,
+    hazeState: HazeState,
+    onOpen: () -> Unit,
+    onDelete: () -> Unit,
+    onRename: (String) -> Unit,
+) {
     var menuOpen by remember { mutableStateOf(false) }
+    var showRename by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    if (showRename) {
+        RenameDialog(
+            current = rec.title,
+            onDismiss = { showRename = false },
+            onConfirm = { showRename = false; onRename(it) },
+        )
+    }
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete recording?") },
+            text = { Text("\"${rec.title}\" will be permanently deleted.") },
+            confirmButton = {
+                TextButton(onClick = { showDeleteConfirm = false; onDelete() }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } },
+        )
+    }
 
     GlassCard(Modifier.fillMaxWidth(), cornerRadius = 20.dp, hazeState = hazeState) {
         Row(
@@ -131,12 +218,41 @@ private fun RecordingCard(rec: Recording, hazeState: HazeState, onOpen: () -> Un
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
+                        text = { Text("Rename") },
+                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                        onClick = { menuOpen = false; showRename = true },
+                    )
+                    DropdownMenuItem(
                         text = { Text("Delete") },
                         leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                        onClick = { menuOpen = false; onDelete() },
+                        onClick = { menuOpen = false; showDeleteConfirm = true },
                     )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun RenameDialog(current: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var text by remember { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rename recording") },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                singleLine = true,
+                label = { Text("Title") },
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(text) },
+                enabled = text.isNotBlank(),
+            ) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }

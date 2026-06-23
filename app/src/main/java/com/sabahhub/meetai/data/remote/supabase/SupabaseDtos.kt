@@ -32,6 +32,9 @@ data class Credentials(val email: String, val password: String)
 @Serializable
 data class RefreshBody(@SerialName("refresh_token") val refreshToken: String)
 
+@Serializable
+data class TitlePatch(val title: String)
+
 /** A row in the Supabase `recordings` table. */
 @Serializable
 data class RecordingRow(

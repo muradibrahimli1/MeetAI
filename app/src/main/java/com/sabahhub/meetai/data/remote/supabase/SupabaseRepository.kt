@@ -54,6 +54,19 @@ class SupabaseRepository(
         Unit
     }
 
+    suspend fun updateTitle(id: String, title: String) = withContext(Dispatchers.IO) {
+        val payload = json.encodeToString(TitlePatch.serializer(), TitlePatch(title))
+        executeAuthed {
+            Request.Builder()
+                .url("$url/rest/v1/recordings?id=eq.$id")
+                .header("Prefer", "return=minimal")
+                .patch(payload.toRequestBody(JSON_MEDIA))
+                .applyHeaders(it)
+                .build()
+        }
+        Unit
+    }
+
     suspend fun delete(id: String) = withContext(Dispatchers.IO) {
         executeAuthed {
             Request.Builder()

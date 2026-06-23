@@ -22,10 +22,13 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,6 +67,21 @@ fun AppShell(
     val autoStart by viewModel.autoStart.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var tab by remember { mutableStateOf(Tab.Recorder) }
+    var showRestartConfirm by remember { mutableStateOf(false) }
+
+    if (showRestartConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRestartConfirm = false },
+            title = { Text("Start over?") },
+            text = { Text("This discards the current recording and starts a new one.") },
+            confirmButton = {
+                TextButton(onClick = { showRestartConfirm = false; viewModel.restartRecording() }) {
+                    Text("Start over", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { showRestartConfirm = false }) { Text("Cancel") } },
+        )
+    }
 
     LaunchedEffect(state.error) {
         state.error?.let {
@@ -92,6 +110,8 @@ fun AppShell(
                     hazeState = hazeState,
                     onOpen = onOpenRecording,
                     onDelete = viewModel::deleteRecording,
+                    onRename = viewModel::renameRecording,
+                    onRefresh = { viewModel.refresh() },
                 )
                 Tab.Settings -> SettingsScreen(
                     session = session,
@@ -120,7 +140,7 @@ fun AppShell(
             onCenter = {
                 when {
                     tab != Tab.Recorder -> tab = Tab.Recorder
-                    state.isRecording -> viewModel.restartRecording() // discard & start over
+                    state.isRecording -> showRestartConfirm = true // confirm before discarding
                     else -> viewModel.startRecording()
                 }
             },

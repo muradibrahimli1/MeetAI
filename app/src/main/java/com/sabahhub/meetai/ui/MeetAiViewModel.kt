@@ -54,7 +54,9 @@ class MeetAiViewModel(
     fun discardRecording() = controller.discardRecording()
     fun saveRecording() = controller.saveRecording()
     fun deleteRecording(id: String) { controller.deleteRecording(id) }
+    fun renameRecording(id: String, title: String) { controller.renameRecording(id, title) }
     fun clearError() = controller.clearError()
+    suspend fun refresh() = controller.refresh()
 
     fun signIn(email: String, password: String) { controller.signIn(email, password) }
     fun signUp(email: String, password: String) { controller.signUp(email, password) }

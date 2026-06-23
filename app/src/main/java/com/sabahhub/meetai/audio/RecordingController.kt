@@ -191,6 +191,15 @@ class RecordingController(
         process(file)
     }
 
+    fun renameRecording(id: String, newTitle: String) = scope.launch {
+        val title = newTitle.trim()
+        if (title.isEmpty()) return@launch
+        _local.value = _local.value.map { if (it.id == id) it.copy(title = title) else it }
+        _cloud.value = _cloud.value.map { if (it.id == id) it.copy(title = title) else it }
+        if (auth.accessToken == null) return@launch
+        runCatching { repo.updateTitle(id, title) }
+    }
+
     fun deleteRecording(id: String) = scope.launch {
         _local.value = _local.value.filterNot { it.id == id }
         _cloud.value = _cloud.value.filterNot { it.id == id }
@@ -200,6 +209,11 @@ class RecordingController(
     }
 
     fun clearError() { _record.value = _record.value.copy(error = null) }
+
+    /** Re-fetch the cloud list (used by pull-to-refresh). No-op when signed out. */
+    suspend fun refresh() {
+        if (auth.accessToken != null && repo.available) refreshCloud()
+    }
 
     private fun setError(message: String?) { _record.value = _record.value.copy(error = message) }
 

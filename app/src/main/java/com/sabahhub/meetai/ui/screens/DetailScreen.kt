@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -73,6 +74,12 @@ fun DetailScreen(
                 },
                 actions = {
                     if (rec != null) {
+                        IconButton(onClick = {
+                            val text = if (tab == 0) rec.summary else transcriptText(rec)
+                            copyToClipboard(context, text)
+                        }) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy")
+                        }
                         IconButton(onClick = { shareRecording(context, rec) }) {
                             Icon(Icons.Default.Share, contentDescription = "Share")
                         }
@@ -170,6 +177,16 @@ private fun TranscriptTab(rec: Recording) {
     } else {
         Text("No transcript available.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
+}
+
+private fun transcriptText(rec: Recording): String =
+    if (rec.utterances.isNotEmpty()) rec.utterances.joinToString("\n\n") { "${it.speaker}: ${it.text}" }
+    else rec.transcript
+
+private fun copyToClipboard(context: android.content.Context, text: String) {
+    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("MeetAI", text))
+    android.widget.Toast.makeText(context, "Copied", android.widget.Toast.LENGTH_SHORT).show()
 }
 
 private fun shareRecording(context: android.content.Context, rec: Recording) {
