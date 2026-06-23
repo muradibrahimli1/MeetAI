@@ -59,8 +59,41 @@ class OpenAiClient(
         }
     }
 
+    /**
+     * Answers a question about [transcript], given prior conversation [history]
+     * (alternating user/assistant turns).
+     */
+    suspend fun ask(transcript: String, history: List<ChatMessage>): String = withContext(Dispatchers.IO) {
+        require(apiKey.isNotBlank()) { "OPENAI_API_KEY is missing — set it in local.properties" }
+
+        val messages = buildList {
+            add(ChatMessage("system", "$ASK_PROMPT\n\nTranscript:\n$transcript"))
+            addAll(history)
+        }
+        val request = ChatRequest(model = model, messages = messages, temperature = 0.3)
+        val payload = json.encodeToString(ChatRequest.serializer(), request)
+
+        val req = Request.Builder()
+            .url("https://api.openai.com/v1/chat/completions")
+            .header("Authorization", "Bearer $apiKey")
+            .post(payload.toRequestBody(JSON_MEDIA))
+            .build()
+
+        http.newCall(req).execute().use { resp ->
+            val raw = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) throw IOException("Chat failed (${resp.code}): $raw")
+            json.decodeFromString<ChatResponse>(raw)
+                .choices.firstOrNull()?.message?.content?.trim().orEmpty()
+        }
+    }
+
     companion object {
         private val JSON_MEDIA = "application/json".toMediaType()
+        private const val ASK_PROMPT = """
+You are an assistant answering questions about a meeting transcript. Answer ONLY
+from the transcript; if the answer isn't in it, say you can't find it. Reply in
+the same language as the user's question. Be concise and specific.
+"""
         private const val SYSTEM_PROMPT = """
 You are a meeting-notes assistant. Given a transcript (which may include speaker
 labels like "Speaker A:"), produce concise, well-structured notes.

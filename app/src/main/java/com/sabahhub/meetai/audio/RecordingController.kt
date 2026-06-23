@@ -238,6 +238,10 @@ class RecordingController(
         if (auth.accessToken != null && repo.available) refreshCloud()
     }
 
+    /** Q&A over a transcript. [history] alternates user/assistant turns. */
+    suspend fun ask(transcript: String, history: List<com.sabahhub.meetai.data.remote.dto.ChatMessage>): String =
+        openAi.ask(transcript, history)
+
     private fun setError(message: String?) { _record.value = _record.value.copy(error = message) }
 
     // --- audio focus (auto-pause during phone calls / interruptions) --------

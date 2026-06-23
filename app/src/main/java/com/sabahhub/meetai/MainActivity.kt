@@ -17,6 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import dev.chrisbanes.haze.HazeState
 import com.sabahhub.meetai.ui.MeetAiViewModel
 import com.sabahhub.meetai.ui.screens.AppShell
+import com.sabahhub.meetai.ui.screens.ChatScreen
 import com.sabahhub.meetai.ui.screens.DetailScreen
 import com.sabahhub.meetai.ui.theme.AppBackground
 import com.sabahhub.meetai.ui.theme.MeetAiTheme
@@ -58,6 +59,15 @@ class MainActivity : ComponentActivity() {
                         composable("detail/{id}") { backStackEntry ->
                             val id = backStackEntry.arguments?.getString("id").orEmpty()
                             DetailScreen(
+                                recordingId = id,
+                                viewModel = viewModel,
+                                onBack = { navController.popBackStack() },
+                                onAsk = { recId -> navController.navigate("chat/$recId") },
+                            )
+                        }
+                        composable("chat/{id}") { backStackEntry ->
+                            val id = backStackEntry.arguments?.getString("id").orEmpty()
+                            ChatScreen(
                                 recordingId = id,
                                 viewModel = viewModel,
                                 onBack = { navController.popBackStack() },

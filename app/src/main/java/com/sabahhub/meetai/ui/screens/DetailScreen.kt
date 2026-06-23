@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -66,6 +67,7 @@ fun DetailScreen(
     recordingId: String,
     viewModel: MeetAiViewModel,
     onBack: () -> Unit,
+    onAsk: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val recordings by viewModel.recordings.collectAsStateWithLifecycle()
@@ -91,6 +93,9 @@ fun DetailScreen(
                 },
                 actions = {
                     if (rec != null) {
+                        IconButton(onClick = { onAsk(rec.id) }) {
+                            Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Ask")
+                        }
                         IconButton(onClick = {
                             val text = if (tab == 0) rec.summary else transcriptText(rec)
                             copyToClipboard(context, text)

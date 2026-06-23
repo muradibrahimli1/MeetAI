@@ -60,6 +60,13 @@ class MeetAiViewModel(
     fun clearError() = controller.clearError()
     suspend fun refresh() = controller.refresh()
 
+    /** Ask a question about a transcript. [history] = (fromUser, text) turns. */
+    suspend fun ask(transcript: String, history: List<Pair<Boolean, String>>): String =
+        controller.ask(
+            transcript,
+            history.map { com.sabahhub.meetai.data.remote.dto.ChatMessage(if (it.first) "user" else "assistant", it.second) },
+        )
+
     fun signIn(email: String, password: String) { controller.signIn(email, password) }
     fun signUp(email: String, password: String) { controller.signUp(email, password) }
     fun signOut() = controller.signOut()
