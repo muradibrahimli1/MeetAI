@@ -26,8 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sabahhub.meetai.ui.MeetAiViewModel
-import com.sabahhub.meetai.ui.RecordUiState
+import com.sabahhub.meetai.audio.RecordUiState
 import com.sabahhub.meetai.ui.components.GlassCard
 import com.sabahhub.meetai.ui.components.Waveform
 import com.sabahhub.meetai.ui.components.glass
